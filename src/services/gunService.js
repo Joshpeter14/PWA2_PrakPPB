@@ -1,4 +1,5 @@
 import { apiClient, IS_SUPABASE } from '../config/api'
+import { getDefaultGunImage } from '../utils/helpers'
 
 // ---------------------------------------------------------------------------
 // Normalizer — standardizes product shape whether received from Supabase
@@ -38,6 +39,11 @@ export const normalizeProduct = (item) => {
       ? item.steps
       : ['Verify firearm is completely unloaded and point in safe direction.', 'Inspect receiver and mechanism for maintenance.']
 
+  const rawImg = item.image_url || item.image || ''
+  const isBlob = typeof rawImg === 'string' && rawImg.startsWith('blob:')
+  const fallback = getDefaultGunImage(item.type || item.category)
+  const resolvedImg = (!rawImg || isBlob) ? fallback : rawImg
+
   return {
     ...item,
     id: item.id,
@@ -47,8 +53,8 @@ export const normalizeProduct = (item) => {
     caliber: item.caliber || 'Standard',
     price: Number(item.price ?? item.cook_time ?? 0),
     description: item.description || '',
-    image_url: item.image_url || item.image || '/guns/pistol.svg',
-    image: item.image_url || item.image || '/guns/pistol.svg',
+    image_url: resolvedImg,
+    image: resolvedImg,
     ingredients: specsList,
     steps: stepsList,
   }

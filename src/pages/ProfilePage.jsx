@@ -124,7 +124,12 @@ export default function ProfilePage({ onReplaySplash }) {
         <div className="profile-card-top">
           <div className="avatar-wrap">
             {avatar ? (
-              <img src={avatar} alt={profile.username} className="avatar-img" />
+              <img
+                src={avatar}
+                alt={profile.username}
+                className="avatar-img"
+                onError={() => setAvatar(null)}
+              />
             ) : (
               <div className="avatar-placeholder">
                 <Shield size={36} stroke="var(--brass)" />

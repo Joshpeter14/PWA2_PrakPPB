@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { BASE_URL, SUPABASE_KEY, IS_SUPABASE } from '../config/api'
+import { fileToOptimizedDataUrl } from '../utils/helpers'
 
 // ---------------------------------------------------------------------------
 // UploadService — image upload service.
@@ -43,7 +44,7 @@ class UploadService {
             apikey: SUPABASE_KEY,
             Authorization: `Bearer ${SUPABASE_KEY}`,
           },
-          timeout: 30000,
+          timeout: 10000,
         })
 
         const publicUrl = `${BASE_URL}/storage/v1/object/public/${bucketName}/${fileName}`
@@ -52,14 +53,9 @@ class UploadService {
           data: { url: publicUrl, filename: fileName },
         }
       } catch (err) {
-        console.warn('Supabase bucket upload not accessible, creating base64 data URL:', err)
-        // Read file as base64 Data URL so the image displays and persists
-        const dataUrl = await new Promise((resolve, reject) => {
-          const reader = new FileReader()
-          reader.onload = () => resolve(reader.result)
-          reader.onerror = reject
-          reader.readAsDataURL(file)
-        })
+        console.warn('Supabase bucket upload not accessible, optimizing to base64 data URL:', err)
+        // Convert and optimize image as base64 Data URL so it displays and persists reliably
+        const dataUrl = await fileToOptimizedDataUrl(file, 800, 600, 0.8)
 
         return {
           success: true,

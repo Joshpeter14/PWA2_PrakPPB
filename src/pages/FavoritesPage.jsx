@@ -4,6 +4,7 @@ import { useFavorites } from '../hooks/useFavorites'
 import { useGuns } from '../hooks/useGuns'
 import GUNS_LOCAL from '../data/guns'
 import GunCard from '../components/gun/GunCard'
+import { getDefaultGunImage } from '../utils/helpers'
 
 /**
  * FavoritesPage — Displays user's shortlisted / favorited weapons.
@@ -53,7 +54,9 @@ export default function FavoritesPage({ onSelectGun, onNavigateCatalog }) {
           id,
           name: fav.name || 'Hardware item',
           type: fav.category || 'Hardware',
-          image_url: fav.image_url || '/guns/pistol.svg',
+          image_url: (!fav.image_url || fav.image_url.startsWith('blob:'))
+            ? getDefaultGunImage(fav.category || fav.type)
+            : fav.image_url,
           price: fav.cook_time || 0,
         })
       }

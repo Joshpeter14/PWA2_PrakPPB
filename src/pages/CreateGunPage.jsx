@@ -20,6 +20,7 @@ import {
   formatDraftTime,
 } from '../utils/draftStorage'
 import ConfirmModal from '../components/modals/ConfirmModal'
+import { fileToOptimizedDataUrl, getDefaultGunImage } from '../utils/helpers'
 
 /**
  * CreateGunPage — Create a new weapon / hardware item with image upload,
@@ -172,12 +173,41 @@ export default function CreateGunPage({ onBack, onSuccess }) {
         throw new Error(result.message || 'Image upload failed.')
       }
     } catch (err) {
-      console.warn('Upload API failed, falling back to local preview:', err)
-      // Allow fallback to image preview so the user can continue even if MinIO bucket is unreachable
-      setUploadedImageUrl(imagePreview || '/guns/pistol.svg')
-      setCurrentStep('form')
+      console.warn('Upload API failed, falling back to optimized data URL:', err)
+      if (imageFile) {
+        try {
+          const dataUrl = await fileToOptimizedDataUrl(imageFile)
+          setUploadedImageUrl(dataUrl)
+          setCurrentStep('form')
+        } catch {
+          setUploadedImageUrl(getDefaultGunImage(formData.type))
+          setCurrentStep('form')
+        }
+      } else {
+        setUploadedImageUrl(getDefaultGunImage(formData.type))
+        setCurrentStep('form')
+      }
     } finally {
       setUploading(false)
+    }
+  }
+
+  const handleContinueWithoutUpload = async () => {
+    if (imageFile) {
+      try {
+        setUploading(true)
+        const dataUrl = await fileToOptimizedDataUrl(imageFile)
+        setUploadedImageUrl(dataUrl)
+        setCurrentStep('form')
+      } catch {
+        setUploadedImageUrl(getDefaultGunImage(formData.type))
+        setCurrentStep('form')
+      } finally {
+        setUploading(false)
+      }
+    } else {
+      setUploadedImageUrl(uploadedImageUrl || getDefaultGunImage(formData.type))
+      setCurrentStep('form')
     }
   }
 
@@ -257,11 +287,16 @@ export default function CreateGunPage({ onBack, onSuccess }) {
     }
 
     // Prepare payload compliant with backend /api/v1/recipes schema
+    const cleanImageUrl =
+      uploadedImageUrl && !uploadedImageUrl.startsWith('blob:')
+        ? uploadedImageUrl
+        : getDefaultGunImage(formData.type)
+
     const payload = {
       name: formData.name.trim(),
       category: formData.category || 'makanan',
       description: formData.description.trim() || `${formData.type} caliber ${formData.caliber}.`,
-      image_url: uploadedImageUrl || '/guns/pistol.svg',
+      image_url: cleanImageUrl,
       prep_time: 15,
       cook_time: Number(formData.price) || 500, // Price stored in cook_time
       servings: Number(formData.servings) || 1,
@@ -396,7 +431,15 @@ export default function CreateGunPage({ onBack, onSuccess }) {
           ) : (
             <div className="preview-container">
               <div className="preview-image-wrap">
-                <img src={imagePreview} alt="Hardware preview" className="preview-img" />
+                <img
+                  src={imagePreview}
+                  alt="Hardware preview"
+                  className="preview-img"
+                  onError={(e) => {
+                    e.currentTarget.onerror = null
+                    e.currentTarget.src = getDefaultGunImage(formData.type)
+                  }}
+                />
                 <button
                   type="button"
                   className="preview-remove-btn"
@@ -431,10 +474,8 @@ export default function CreateGunPage({ onBack, onSuccess }) {
                 <button
                   type="button"
                   className="btn btn--outline"
-                  onClick={() => {
-                    setUploadedImageUrl(imagePreview)
-                    setCurrentStep('form')
-                  }}
+                  onClick={handleContinueWithoutUpload}
+                  disabled={uploading}
                 >
                   Continue without uploading
                 </button>
@@ -449,7 +490,15 @@ export default function CreateGunPage({ onBack, onSuccess }) {
         <form onSubmit={handleSubmit} className="entry-form">
           {/* Active Image Thumbnail */}
           <div className="selected-thumb-bar">
-            <img src={uploadedImageUrl || imagePreview} alt="Selected" className="thumb-small" />
+            <img
+              src={uploadedImageUrl || imagePreview || getDefaultGunImage(formData.type)}
+              alt="Selected"
+              className="thumb-small"
+              onError={(e) => {
+                e.currentTarget.onerror = null
+                e.currentTarget.src = getDefaultGunImage(formData.type)
+              }}
+            />
             <div className="thumb-info">
               <span className="thumb-title">Imagery Assigned</span>
               <span className="thumb-sub">Ready for registration</span>

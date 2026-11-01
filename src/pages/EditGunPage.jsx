@@ -20,6 +20,7 @@ import {
   formatDraftTime,
 } from '../utils/draftStorage'
 import ConfirmModal from '../components/modals/ConfirmModal'
+import { fileToOptimizedDataUrl, getDefaultGunImage } from '../utils/helpers'
 
 /**
  * EditGunPage — Edit an existing weapon / hardware item.
@@ -196,8 +197,15 @@ export default function EditGunPage({ gun, gunId, onBack, onSuccess }) {
         setTimeout(() => setSuccessMsg(''), 3000)
       }
     } catch (err) {
-      console.warn('Image upload failed, using local blob:', err)
-      setCurrentImageUrl(imagePreview)
+      console.warn('Image upload failed, falling back to optimized data URL:', err)
+      try {
+        const dataUrl = await fileToOptimizedDataUrl(imageFile)
+        setCurrentImageUrl(dataUrl)
+        setSuccessMsg('Image optimized and assigned.')
+        setTimeout(() => setSuccessMsg(''), 3000)
+      } catch {
+        setCurrentImageUrl(getDefaultGunImage(formData.type))
+      }
       setImageFile(null)
       setImagePreview(null)
     } finally {
@@ -265,6 +273,18 @@ export default function EditGunPage({ gun, gunId, onBack, onSuccess }) {
       return
     }
 
+    let finalImageUrl = currentImageUrl
+    if (imageFile) {
+      try {
+        finalImageUrl = await fileToOptimizedDataUrl(imageFile)
+      } catch {
+        finalImageUrl = currentImageUrl
+      }
+    }
+    if (!finalImageUrl || finalImageUrl.startsWith('blob:')) {
+      finalImageUrl = getDefaultGunImage(formData.type)
+    }
+
     const payload = {
       name: formData.name.trim(),
       type: formData.type || (formData.category === 'minuman' ? 'Rifle' : 'Pistol'),
@@ -272,7 +292,7 @@ export default function EditGunPage({ gun, gunId, onBack, onSuccess }) {
       price: Number(formData.price) || 500,
       category: formData.category || 'makanan',
       description: formData.description.trim() || `${formData.type} caliber ${formData.caliber}.`,
-      image_url: imagePreview || currentImageUrl || '/guns/pistol.svg',
+      image_url: finalImageUrl,
       prep_time: 15,
       cook_time: Number(formData.price) || 500,
       servings: Number(formData.servings) || 1,
@@ -352,9 +372,13 @@ export default function EditGunPage({ gun, gunId, onBack, onSuccess }) {
           <h2 className="card-box-title">Visual Asset</h2>
           <div className="edit-img-wrap">
             <img
-              src={imagePreview || currentImageUrl}
+              src={imagePreview || currentImageUrl || getDefaultGunImage(formData.type)}
               alt="Current hardware"
               className="edit-current-img"
+              onError={(e) => {
+                e.currentTarget.onerror = null
+                e.currentTarget.src = getDefaultGunImage(formData.type)
+              }}
             />
             <div className="edit-img-controls">
               <input

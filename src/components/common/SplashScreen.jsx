@@ -84,6 +84,10 @@ export default function SplashScreen({ onFinish, duration = 5400 }) {
         className="splash-mark"
         src="/logo.png"
         alt="Bore & Barrel Gunshop Asli Ngawi Logo"
+        onError={(e) => {
+          e.currentTarget.onerror = null
+          e.currentTarget.src = '/icon-512.png'
+        }}
       />
 
       {/* Bullet impact cracks SVG */}

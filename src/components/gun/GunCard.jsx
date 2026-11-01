@@ -1,5 +1,5 @@
 import FavoriteButton from '../common/FavoriteButton'
-import { formatPrice, truncate } from '../../utils/helpers'
+import { formatPrice, truncate, getDefaultGunImage } from '../../utils/helpers'
 
 /**
  * Product card used in the catalog grid.
@@ -11,7 +11,10 @@ import { formatPrice, truncate } from '../../utils/helpers'
  * @param {Function} [props.onDelete]— called when Delete is clicked (admin)
  */
 export default function GunCard({ gun, onSelect, onEdit, onDelete }) {
-  const imgSrc = gun.image_url || gun.image || '/guns/pistol.svg'
+  const fallback = getDefaultGunImage(gun.type || gun.category)
+  const raw = gun.image_url || gun.image
+  const imgSrc = !raw || (typeof raw === 'string' && raw.startsWith('blob:')) ? fallback : raw
+
   const category = gun.type || gun.category || '—'
   const caliber = gun.caliber || gun.difficulty || ''
   const price = gun.price ?? gun.cook_time ?? 0
@@ -30,7 +33,11 @@ export default function GunCard({ gun, onSelect, onEdit, onDelete }) {
           alt={gun.name}
           width="240"
           height="180"
-          loading="lazy"
+          decoding="async"
+          onError={(e) => {
+            e.currentTarget.onerror = null
+            e.currentTarget.src = fallback
+          }}
         />
 
         <span className="name display">{gun.name}</span>
@@ -55,7 +62,10 @@ export default function GunCard({ gun, onSelect, onEdit, onDelete }) {
           <button
             type="button"
             className="card-act-btn"
-            onClick={(e) => { e.stopPropagation(); onEdit(gun) }}
+            onClick={(e) => {
+              e.stopPropagation()
+              onEdit(gun)
+            }}
             aria-label={`Edit ${gun.name}`}
             title="Edit"
           >
@@ -67,7 +77,10 @@ export default function GunCard({ gun, onSelect, onEdit, onDelete }) {
           <button
             type="button"
             className="card-act-btn card-act-btn--danger"
-            onClick={(e) => { e.stopPropagation(); onDelete(gun) }}
+            onClick={(e) => {
+              e.stopPropagation()
+              onDelete(gun)
+            }}
             aria-label={`Delete ${gun.name}`}
             title="Delete"
           >
